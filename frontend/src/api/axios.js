@@ -1,57 +1,49 @@
 import axios from "axios";
 
+const BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://maman50-api-v2.onrender.com";
+
 export const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/api",
+  baseURL: BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  timeout: 30000,
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token");
+// Ajoute automatiquement le JWT
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("access");
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
 
-  return config;
-});
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
+// Gestion automatique des erreurs
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    if (error.response?.status === 401) {
+      localStorage.removeItem("access");
+      localStorage.removeItem("refresh");
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      const refreshToken = localStorage.getItem("refresh_token");
-
-      if (!refreshToken) {
-        localStorage.clear();
+      if (
+        window.location.pathname !== "/login" &&
+        window.location.pathname !== "/"
+      ) {
         window.location.href = "/login";
-        return Promise.reject(error);
-      }
-
-      try {
-        const response = await axios.post(
-          "http://127.0.0.1:8000/api/auth/refresh/",
-          {
-            refresh: refreshToken,
-          }
-        );
-
-        const newAccessToken = response.data.access;
-
-        localStorage.setItem("access_token", newAccessToken);
-
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-        return api(originalRequest);
-      } catch (refreshError) {
-        localStorage.clear();
-        window.location.href = "/login";
-        return Promise.reject(refreshError);
       }
     }
 
     return Promise.reject(error);
   }
 );
+
+export default api;
