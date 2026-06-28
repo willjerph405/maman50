@@ -1,17 +1,22 @@
 import axios from "axios";
 
+// URL de l'API Django
 const BASE_URL =
   import.meta.env.VITE_API_URL ||
   "https://maman50-api-v2.onrender.com/api";
 
 const api = axios.create({
   baseURL: BASE_URL,
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json",
+    Accept: "application/json",
   },
-  timeout: 30000,
 });
 
+// ============================
+// Requête
+// ============================
 api.interceptors.request.use(
   (config) => {
     const token =
@@ -27,9 +32,12 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// ============================
+// Réponse
+// ============================
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
